@@ -1,0 +1,65 @@
+# Linux VM
+# Select Subscription
+Get-AzureSubscription
+Select-AzureSubscription -SubscriptionName "STYLELABS Infra"
+Set-AzureSubscription -SubscriptionName "STYLELABS Infra" -CurrentStorageAccountName "armgrouptest"
+
+$nodes = Read-Host 'Enter number of nodes'
+$imagename = "b39f27a8b8c64d52b05eac6a62ebad85__Ubuntu-14_04_2_LTS-amd64-server-20150309-en-us-30GB"
+$username = "stylelabs"
+$password = "P@ssw0rd!"
+$container = "deployment"
+$location = "North Europe"
+$servicename = "vangeltest2"
+$cluster = "F001-ES-Cluster"
+$command = ""
+
+if ($nodes -eq 3)
+{
+    $j = 3
+    $vmname1 = "F001" + "R0" + $j
+    $j--
+    $vmname2 = "F001" + "R0" + $j
+    $j--
+    $vmname3 = "F001" + "R0" + $j
+    $command = 'bash ubuntu-elasticsearch-installation.sh -n ' + $vmname1 + ' -n ' + $vmname2 + ' -n ' + $vmname3 + ' -c ' + $cluster
+}
+
+if ($nodes -eq 5)
+{
+    $j = 5
+    $vmname1 = "F001" + "R0" + $j
+    $j--
+    $vmname2 = "F001" + "R0" + $j
+    $j--
+    $vmname3 = "F001" + "R0" + $j
+    $j--
+    $vmname4 = "F001" + "R0" + $j
+    $j--
+    $vmname5 = "F001" + "R0" + $j
+    $command = 'bash ubuntu-elasticsearch-installation.sh -n ' + $vmname1 + ' -n ' + $vmname2 + ' -n ' + $vmname3 + ' -n ' + $vmname4 + ' -n ' + $vmname5 + ' -c ' + $cluster
+}
+
+
+for ($i=1;$i -le $nodes;$i++)
+{
+
+# Define VM1 Settings
+$vmname = "F001" + "R0" + $i
+$command = $command + ' -h ' + $vmname
+$vm = New-AzureVMConfig -Name $vmname -InstanceSize Small -ImageName $imagename
+$vm = Add-AzureProvisioningConfig -VM $vm -Linux -LinuxUser $username -Password $password
+$PublicConfiguration = '{"fileUris":["http://armgrouptest.blob.core.windows.net/deployment/ubuntu-elasticsearch-installation.sh"], "commandToExecute": "' + $command + '"}'
+
+
+# Custom Script Extension Settings for VM1
+$ExtensionName = 'CustomScriptForLinux'  
+$Publisher = 'Microsoft.OSTCExtensions'  
+$Version = '1.2' 
+$vm = Set-AzureVMExtension -ExtensionName $ExtensionName -VM $vm -Publisher $Publisher -Version $Version -PublicConfiguration $PublicConfiguration
+
+# Create VM1
+New-AzureVM -ServiceName $servicename -Location $location -VMs $vm
+}
+
+
